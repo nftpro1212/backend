@@ -12,7 +12,7 @@ import authRoutes from "./routes/authRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import referralRoutes from "./routes/referralRoutes.js";
 import prizeRoutes from "./routes/prizeRoutes.js";
-
+import authRoutes from "./routes/auth.js";
 // 🔹 Load environment variables
 dotenv.config();
 
