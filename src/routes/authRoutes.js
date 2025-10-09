@@ -1,45 +1,32 @@
 import express from "express";
-import User from "../models/User.js";
-
+import User from "../models/User.js"; // MongoDB modeli
 const router = express.Router();
 
-/**
- * @route POST /api/auth/login
- * @desc Telegram orqali avtomatik login yoki ro‘yxatdan o‘tish
- * @access Public
- */
 router.post("/login", async (req, res) => {
   try {
-    const { telegramId, username, first_name, last_name, photo_url } = req.body;
+    const { id, first_name, last_name, username } = req.body;
 
-    if (!telegramId)
-      return res.status(400).json({ success: false, message: "telegramId required" });
+    if (!id) return res.status(400).json({ message: "Telegram foydalanuvchisi aniqlanmadi" });
 
-    // Foydalanuvchini topamiz
-    let user = await User.findOne({ telegramId });
+    // Avval mavjud foydalanuvchini qidiramiz
+    let user = await User.findOne({ telegramId: id });
 
+    // Agar topilmasa — yangi yaratamiz
     if (!user) {
-      // Agar topilmasa yangi user yaratamiz
-      user = await User.create({
-        telegramId,
+      user = new User({
+        telegramId: id,
+        first_name,
+        last_name,
         username,
-        firstName: first_name,
-        lastName: last_name,
-        photoUrl: photo_url,
+        isPremium: false,
       });
-    } else {
-      // Agar mavjud bo‘lsa, yangilab qo‘yamiz
-      user.username = username || user.username;
-      user.firstName = first_name || user.firstName;
-      user.lastName = last_name || user.lastName;
-      user.photoUrl = photo_url || user.photoUrl;
       await user.save();
     }
 
     res.json({ success: true, user });
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (err) {
+    console.error("Auth login xatosi:", err);
+    res.status(500).json({ message: "Server xatosi" });
   }
 });
 
