@@ -12,6 +12,7 @@ import authRoutes from "./routes/authRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import referralRoutes from "./routes/referralRoutes.js";
 import prizeRoutes from "./routes/prizeRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 // 🔹 Load environment variables
 dotenv.config();
@@ -37,7 +38,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/prizes", prizeRoutes);
-
+app.use("/api/users", userRoutes);
 // ✅ Default route
 app.get("/", (req, res) => {
   res.status(200).send({
