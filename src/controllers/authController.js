@@ -42,7 +42,7 @@ export const handleTelegramLogin = async (req, res) => {
             referredId: user._id,
           });
 
-          // ixtiyoriy: referalga bonus berish
+          // optional: referalga bonus berish
           // refUser.balance += 1000; await refUser.save();
         }
       }
