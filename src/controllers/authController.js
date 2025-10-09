@@ -3,56 +3,39 @@ import Referral from "../models/Referral.js";
 
 export const handleTelegramLogin = async (req, res) => {
   try {
-    const { id, username, first_name, last_name, photo_url, referralCode } = req.body;
+    // 🔹 Frontenddan keladigan nomlar (tgId yoki telegramId)
+    const { tgId, telegramId, username, referralCode } = req.body;
+    const finalTgId = tgId || telegramId; // qaysi biri kelsa, o‘shani ishlatamiz
 
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Telegram foydalanuvchi ID (id) majburiy.",
-      });
+    if (!finalTgId) {
+      return res.status(400).json({ success: false, message: "telegramId (tgId) majburiy" });
     }
 
-    // 🔹 Foydalanuvchini bazadan topamiz
-    let user = await User.findOne({ telegramId: id });
+    // 🔹 Foydalanuvchini topamiz yoki yaratamiz
+    let user = await User.findOne({ tgId: finalTgId });
 
-    // 🔹 Agar topilmasa — yangisini yaratamiz
     if (!user) {
       user = new User({
-        telegramId: id,
-        username: username || "",
-        firstName: first_name || "",
-        lastName: last_name || "",
-        photoUrl: photo_url || "",
+        tgId: finalTgId,
+        username: username || "no_username",
+        referralCode: `ref_${Math.floor(Math.random() * 1000000)}`, // unikal kod
       });
       await user.save();
+      console.log(`🟢 Yangi foydalanuvchi yaratildi: ${username || "no_username"} (${finalTgId})`);
     } else {
-      // mavjud foydalanuvchining ma'lumotlarini yangilaymiz
-      let updated = false;
-
+      // foydalanuvchi mavjud bo‘lsa, username yangilaymiz
       if (username && user.username !== username) {
         user.username = username;
-        updated = true;
+        await user.save();
+        console.log(`🟡 Username yangilandi: ${username} (${finalTgId})`);
+      } else {
+        console.log(`🟢 Mavjud foydalanuvchi topildi: ${user.username} (${finalTgId})`);
       }
-      if (first_name && user.firstName !== first_name) {
-        user.firstName = first_name;
-        updated = true;
-      }
-      if (last_name && user.lastName !== last_name) {
-        user.lastName = last_name;
-        updated = true;
-      }
-      if (photo_url && user.photoUrl !== photo_url) {
-        user.photoUrl = photo_url;
-        updated = true;
-      }
-
-      if (updated) await user.save();
     }
 
-    // 🔹 Referral kod bo‘lsa, uni tekshiramiz
+    // 🔹 Referral mavjud bo‘lsa, uni qayd etamiz
     if (referralCode && referralCode.startsWith("ref_")) {
-      const refUser = await User.findOne({ referralCode });
-
+      const refUser = await User.findOne({ referralCode: referralCode });
       if (refUser && refUser._id.toString() !== user._id.toString()) {
         const exists = await Referral.findOne({
           referrerId: refUser._id,
@@ -65,24 +48,18 @@ export const handleTelegramLogin = async (req, res) => {
             referredId: user._id,
           });
 
-          // optional: referalga mukofot qo‘shish
-          // refUser.isPremium = true;
-          // await refUser.save();
+          console.log(`🎉 Referral qo‘shildi: ${refUser.username} → ${user.username}`);
         }
       }
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Telegram orqali muvaffaqiyatli kirildi!",
-      user,
-    });
+    // 🔹 Javob qaytaramiz
+    return res.status(200).json({ success: true, user });
   } catch (error) {
     console.error("❌ Telegram login xatosi:", error);
     return res.status(500).json({
       success: false,
-      message: "Serverda xatolik yuz berdi",
-      error: error.message,
+      message: error.message || "Server xatosi",
     });
   }
 };
