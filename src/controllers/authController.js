@@ -3,7 +3,16 @@ import Referral from "../models/Referral.js";
 
 export const handleTelegramLogin = async (req, res) => {
   try {
-    const { tgId, telegramId, username, referralCode } = req.body;
+    const {
+      tgId,
+      telegramId,
+      username,
+      first_name,
+      last_name,
+      avatar,
+      referralCode,
+    } = req.body;
+
     const finalTelegramId = tgId || telegramId;
 
     if (!finalTelegramId) {
@@ -19,15 +28,31 @@ export const handleTelegramLogin = async (req, res) => {
       user = new User({
         telegramId: finalTelegramId,
         username: username || "no_username",
-        referralCode: `ref_${Math.floor(Math.random() * 1000000)}`,
+        first_name,
+        last_name,
+        avatar,
+        referralCode: `ref_${Math.floor(100000 + Math.random() * 900000)}`,
       });
+
       await user.save();
       console.log(`🟢 Yangi foydalanuvchi yaratildi: ${user.username} (${finalTelegramId})`);
     } else {
+      // agar username yoki avatar o‘zgargan bo‘lsa, yangilaymiz
+      let updated = false;
+
       if (username && user.username !== username) {
         user.username = username;
+        updated = true;
+      }
+
+      if (avatar && user.avatar !== avatar) {
+        user.avatar = avatar;
+        updated = true;
+      }
+
+      if (updated) {
         await user.save();
-        console.log(`🟡 Username yangilandi: ${username} (${finalTelegramId})`);
+        console.log(`🟡 Foydalanuvchi ma'lumotlari yangilandi: ${username}`);
       } else {
         console.log(`🟢 Mavjud foydalanuvchi: ${user.username} (${finalTelegramId})`);
       }
@@ -35,7 +60,8 @@ export const handleTelegramLogin = async (req, res) => {
 
     // 🔹 Referral tizimi
     if (referralCode && referralCode.startsWith("ref_")) {
-      const refUser = await User.findOne({ referralCode: referralCode });
+      const refUser = await User.findOne({ referralCode });
+
       if (refUser && refUser._id.toString() !== user._id.toString()) {
         const exists = await Referral.findOne({
           referrerId: refUser._id,
@@ -47,6 +73,7 @@ export const handleTelegramLogin = async (req, res) => {
             referrerId: refUser._id,
             referredId: user._id,
           });
+
           console.log(`🎉 Referral qo‘shildi: ${refUser.username} → ${user.username}`);
         }
       }
