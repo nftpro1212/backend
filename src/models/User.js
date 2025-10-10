@@ -2,13 +2,11 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    telegramId: { type: String, required: true, unique: true },
+    telegramId: { type: Number, required: true, unique: true },
     username: { type: String },
-    firstName: { type: String },
-    lastName: { type: String },
-    photoUrl: { type: String },
-    isPremium: { type: Boolean, default: false },
-    referrals: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    first_name: { type: String },
+    last_name: { type: String },
+    referralCode: { type: String },
   },
   { timestamps: true }
 );
