@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { handleTelegramLogin } from "../controllers/authController.js";
 
-const router = express.Router();
+const router = mongoose.Router();
 
 router.post("/login", handleTelegramLogin);
 
