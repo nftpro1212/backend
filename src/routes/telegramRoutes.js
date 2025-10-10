@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { handleTelegramLogin } from "../controllers/telegramController.js";
+import { handleTelegramLogin } from "../controllers/authController.js";
 
 const router = express.Router();
 
