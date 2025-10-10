@@ -1,8 +1,11 @@
 import mongoose from "mongoose";
 
-const referralSchema = new mongoose.Schema({
-  inviter: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  invited: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
-}, { timestamps: true });
+const referralSchema = new mongoose.Schema(
+  {
+    referrerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    referredId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  },
+  { timestamps: true }
+);
 
 export default mongoose.model("Referral", referralSchema);
