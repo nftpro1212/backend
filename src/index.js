@@ -1,5 +1,4 @@
 import express from "express";
-import dotenv from "dotenv";
 import cors from "cors";
 import mongoose from "mongoose";
 import morgan from "morgan";
@@ -13,9 +12,7 @@ import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import referralRoutes from "./routes/referralRoutes.js";
 import prizeRoutes from "./routes/prizeRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
-
-// 🔹 Load environment variables
-dotenv.config();
+import telegramRoutes from "./routes/telegramRoutes.js"; // 🟢 Yangi qo‘shildi
 
 // ✅ Express app
 const app = express();
@@ -23,27 +20,32 @@ const app = express();
 // ✅ Middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "*", // Frontend manzili
+    origin: [
+      "https://front0-v1wm.onrender.com", // ✅ WebApp frontend manzili
+      "https://t.me", // Telegram ichidan kirishda
+    ],
     credentials: true,
   })
 );
-app.use(express.json({ limit: "10mb" })); // JSON limit
-app.use(morgan("dev")); // loglar
+app.use(express.json({ limit: "10mb" }));
+app.use(morgan("dev"));
 
 // ✅ Database connection
-connectDB();
+connectDB(); // config/db.js ichida Mongo ulanishi
 
-// ✅ API routes
+// ✅ API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/prizes", prizeRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/telegram", telegramRoutes); // 🟢 Telegram WebApp login yo‘li
+
 // ✅ Default route
 app.get("/", (req, res) => {
   res.status(200).send({
     status: "success",
-    message: "🚀 Telegram WebApp Backend is running successfully!",
+    message: "🚀 Telegram WebApp Backend ishlayapti!",
     version: "1.0.0",
   });
 });
@@ -60,5 +62,5 @@ app.use((err, req, res, next) => {
 // ✅ Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server http://localhost:${PORT} da ishga tushdi`);
 });
