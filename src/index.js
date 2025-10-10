@@ -1,31 +1,66 @@
 import express from "express";
-import dotenv from "dotenv";
 import cors from "cors";
+import mongoose from "mongoose";
 import morgan from "morgan";
+
+// 🔹 Custom modules
 import connectDB from "./config/db.js";
+
+// 🔹 Routes
 import authRoutes from "./routes/authRoutes.js";
+import subscriptionRoutes from "./routes/subscriptionRoutes.js";
+import referralRoutes from "./routes/referralRoutes.js";
+import prizeRoutes from "./routes/prizeRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import telegramRoutes from "./routes/telegramRoutes.js"; // 🟢 Yangi qo‘shildi
 
-dotenv.config();
-connectDB();
-
+// ✅ Express app
 const app = express();
 
+// ✅ Middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: [
+      "https://front0-v1wm.onrender.com", // ✅ WebApp frontend manzili
+      "https://t.me", // Telegram ichidan kirishda
+    ],
     credentials: true,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use(morgan("dev"));
 
-// API routes
-app.use("/api/auth", authRoutes);
+// ✅ Database connection
+connectDB(); // config/db.js ichida Mongo ulanishi
 
-// Default
+// ✅ API Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/subscription", subscriptionRoutes);
+app.use("/api/referrals", referralRoutes);
+app.use("/api/prizes", prizeRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/telegram", telegramRoutes); // 🟢 Telegram WebApp login yo‘li
+
+// ✅ Default route
 app.get("/", (req, res) => {
-  res.json({ message: "🚀 Telegram WebApp backend ishlayapti!" });
+  res.status(200).send({
+    status: "success",
+    message: "🚀 Telegram WebApp Backend ishlayapti!",
+    version: "1.0.0",
+  });
 });
 
+// ✅ Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("❌ Error:", err.message);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Server ichki xatoligi",
+  });
+});
+
+// ✅ Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Server http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ Server http://localhost:${PORT} da ishga tushdi`);
+});
