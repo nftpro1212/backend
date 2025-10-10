@@ -1,31 +1,63 @@
 import User from "../models/User.js";
+import Referral from "../models/Referral.js";
 
 export const handleTelegramLogin = async (req, res) => {
   try {
-    const { tgId, username, first_name, last_name } = req.body;
+    const { tgId, telegramId, username, referralCode } = req.body;
+    const finalTelegramId = tgId || telegramId;
 
-    if (!tgId) {
-      return res.status(400).json({ success: false, message: "Telegram ID topilmadi" });
+    if (!finalTelegramId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "telegramId (tgId) majburiy" });
     }
 
-    let user = await User.findOne({ telegramId: tgId });
+    // 🔹 Foydalanuvchini topamiz yoki yaratamiz
+    let user = await User.findOne({ telegramId: finalTelegramId });
 
     if (!user) {
-      user = await User.create({
-        telegramId: tgId,
-        username,
-        first_name,
-        last_name,
-        referralCode: `ref_${Math.floor(100000 + Math.random() * 900000)}`,
+      user = new User({
+        telegramId: finalTelegramId,
+        username: username || "no_username",
+        referralCode: `ref_${Math.floor(Math.random() * 1000000)}`,
       });
-      console.log(`🟢 Yangi foydalanuvchi yaratildi: ${username || "no_username"}`);
+      await user.save();
+      console.log(`🟢 Yangi foydalanuvchi yaratildi: ${user.username} (${finalTelegramId})`);
     } else {
-      console.log(`🟡 Foydalanuvchi mavjud: ${username}`);
+      if (username && user.username !== username) {
+        user.username = username;
+        await user.save();
+        console.log(`🟡 Username yangilandi: ${username} (${finalTelegramId})`);
+      } else {
+        console.log(`🟢 Mavjud foydalanuvchi: ${user.username} (${finalTelegramId})`);
+      }
     }
 
-    res.status(200).json({ success: true, user });
-  } catch (err) {
-    console.error("❌ Login xatosi:", err);
-    res.status(500).json({ success: false, message: err.message });
+    // 🔹 Referral tizimi
+    if (referralCode && referralCode.startsWith("ref_")) {
+      const refUser = await User.findOne({ referralCode: referralCode });
+      if (refUser && refUser._id.toString() !== user._id.toString()) {
+        const exists = await Referral.findOne({
+          referrerId: refUser._id,
+          referredId: user._id,
+        });
+
+        if (!exists) {
+          await Referral.create({
+            referrerId: refUser._id,
+            referredId: user._id,
+          });
+          console.log(`🎉 Referral qo‘shildi: ${refUser.username} → ${user.username}`);
+        }
+      }
+    }
+
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    console.error("❌ Telegram login xatosi:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Server xatosi",
+    });
   }
 };
