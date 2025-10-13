@@ -8,7 +8,4 @@ const referralSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Bir foydalanuvchi bir referrer orqali bir martadan ko‘p yozilmasligi
-referralSchema.index({ referrerId: 1, referredId: 1 }, { unique: true });
-
 export default mongoose.model("Referral", referralSchema);
