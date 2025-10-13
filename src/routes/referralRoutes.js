@@ -4,14 +4,14 @@ import User from "../models/User.js";
 
 const router = express.Router();
 
-// ✅ 1. Referral hisoblash
+/* ✅ 1. Referral hisoblash */
 router.get("/count", async (req, res) => {
   try {
-    const telegramId = req.query.telegramId;
-    if (!telegramId)
-      return res.status(400).json({ success: false, message: "telegramId majburiy" });
+    const { tgId } = req.query; // 🔹 oldingi 'telegramId' o‘rniga 'tgId' ishlatyapmiz
+    if (!tgId)
+      return res.status(400).json({ success: false, message: "tgId majburiy" });
 
-    const user = await User.findOne({ tgId: telegramId });
+    const user = await User.findOne({ tgId });
     if (!user)
       return res.status(404).json({ success: false, message: "Foydalanuvchi topilmadi" });
 
@@ -23,7 +23,7 @@ router.get("/count", async (req, res) => {
   }
 });
 
-// ✅ 2. Leaderboard (eng ko‘p taklif qilganlar)
+/* ✅ 2. Eng ko‘p taklif qilganlar ro‘yxati */
 router.get("/leaderboard", async (req, res) => {
   try {
     const leaderboard = await Referral.aggregate([
@@ -54,31 +54,29 @@ router.get("/leaderboard", async (req, res) => {
   }
 });
 
-// ✅ 3. Referral yozish (Telegram orqali kirganda)
+/* ✅ 3. Referral yozish (taklif orqali kirganda) */
 router.post("/register", async (req, res) => {
   try {
-    const { refCode, newUserId } = req.body;
-
-    if (!refCode || !newUserId)
+    const { refCode, tgId } = req.body; // 🔹 newUserId o‘rniga 'tgId'
+    if (!refCode || !tgId)
       return res.status(400).json({ success: false, message: "Ma'lumot yetarli emas" });
 
     const referrer = await User.findOne({ referralCode: refCode });
-    const referred = await User.findOne({ tgId: newUserId });
+    const referred = await User.findOne({ tgId });
 
     if (!referrer || !referred)
       return res.status(404).json({ success: false, message: "Foydalanuvchi topilmadi" });
 
-    // O‘zi o‘zini taklif qilolmasin
     if (referrer._id.equals(referred._id))
       return res.status(400).json({ success: false, message: "O‘zingizni taklif qila olmaysiz" });
 
-    // Takror yozmaslik
     const exists = await Referral.findOne({
       referrerId: referrer._id,
       referredId: referred._id,
     });
+
     if (exists)
-      return res.status(200).json({ success: false, message: "Bu foydalanuvchi allaqachon taklif qilingan" });
+      return res.status(200).json({ success: true, message: "Allaqachon mavjud" });
 
     await Referral.create({
       referrerId: referrer._id,
