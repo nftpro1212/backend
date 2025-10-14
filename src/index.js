@@ -13,6 +13,7 @@ import referralRoutes from "./routes/referralRoutes.js";
 import prizeRoutes from "./routes/prizeRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import telegramRoutes from "./routes/telegramRoutes.js"; // 🟢 Yangi qo‘shildi
+import rewardRoutes from "./routes/rewardRoutes.js";
 
 // ✅ Express app
 const app = express();
@@ -40,7 +41,7 @@ app.use("/api/referrals", referralRoutes);
 app.use("/api/prizes", prizeRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/telegram", telegramRoutes); // 🟢 Telegram WebApp login yo‘li
-
+app.use("/api/rewards", rewardRoutes);
 // ✅ Default route
 app.get("/", (req, res) => {
   res.status(200).send({
