@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { nanoid } from "nanoid"; // 🔹 Kod generatsiya qilish uchun (npm i nanoid)
 
 const userSchema = new mongoose.Schema(
   {
@@ -8,7 +9,13 @@ const userSchema = new mongoose.Schema(
     last_name: String,
     avatar: String,
 
-    referralCode: { type: String, unique: true }, // unikal kod (telegramId asosida)
+    // 🔹 referralCode endi avtomatik hosil bo‘ladi
+    referralCode: {
+      type: String,
+      unique: true,
+      default: () => nanoid(8), // masalan: "X7DK2A9P"
+    },
+
     referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
     premium: {
