@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
     last_name: String,
     avatar: String,
 
-    referralCode: { type: String, unique: true },
+    referralCode: { type: String, unique: true }, 
     referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
     premium: {
