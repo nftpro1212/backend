@@ -1,68 +1,68 @@
 import express from "express";
 import Reward from "../models/Reward.js";
-import User from "../models/User.js";
+import User from "../models/User.js"; // foydalanuvchini tekshirish uchun (agar kerak bo‘lsa)
 
 const router = express.Router();
 
 /**
- * 🎯 Sovgani saqlash
+ * @route   POST /api/rewards/save
+ * @desc    Foydalanuvchiga mukofot yozish
  */
 router.post("/save", async (req, res) => {
   try {
     const { telegramId, prize } = req.body;
-    if (!telegramId || !prize)
-      return res.status(400).json({ message: "Malumot to‘liq emas" });
 
-    // User mavjudligini tekshiramiz
-    let user = await User.findOne({ telegramId });
-    if (!user) {
-      user = await User.create({
-        telegramId,
-        username: "unknown",
-        referralCode: `ref_${telegramId}`,
+    if (!telegramId || !prize) {
+      return res.status(400).json({
+        success: false,
+        message: "telegramId va prize kiritilishi shart!",
       });
     }
 
-    // Sovgani saqlaymiz
-    const reward = await Reward.create({
-      telegramId,
-      prize,
-    });
+    // Foydalanuvchi bazada bormi (ixtiyoriy)
+    const user = await User.findOne({ telegramId });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Foydalanuvchi topilmadi" });
+    }
 
-    res.json({ success: true, reward });
-  } catch (err) {
-    console.error("Reward saqlashda xato:", err);
-    res.status(500).json({ error: err.message });
+    // Yangi mukofot saqlash
+    const reward = new Reward({ telegramId, prize });
+    await reward.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Mukofot muvaffaqiyatli saqlandi",
+      reward,
+    });
+  } catch (error) {
+    console.error("❌ Reward saqlashda xato:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 /**
- * 📊 Foydalanuvchining barcha yutuqlarini olish
+ * @route   GET /api/rewards/history/:telegramId
+ * @desc    Foydalanuvchining barcha mukofotlari tarixini olish
  */
-router.get("/user/:telegramId", async (req, res) => {
+router.get("/history/:telegramId", async (req, res) => {
   try {
     const { telegramId } = req.params;
+
     const rewards = await Reward.find({ telegramId }).sort({ createdAt: -1 });
-    res.json({ success: true, rewards });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-/**
- * 🏆 Eng ko‘p yutgan foydalanuvchilar (leaderboard)
- */
-router.get("/leaderboard", async (req, res) => {
-  try {
-    const leaderboard = await Reward.aggregate([
-      { $group: { _id: "$telegramId", totalWins: { $sum: 1 } } },
-      { $sort: { totalWins: -1 } },
-      { $limit: 10 },
-    ]);
+    if (!rewards.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Bu foydalanuvchida hali mukofotlar yo‘q",
+      });
+    }
 
-    res.json({ success: true, leaderboard });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(200).json({ success: true, rewards });
+  } catch (error) {
+    console.error("❌ Tarix olishda xato:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
