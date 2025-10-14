@@ -4,26 +4,35 @@ import User from "../models/User.js";
 
 const router = express.Router();
 
-/* ✅ 1. Referral hisoblash */
+/* ✅ 1. Referral sonini olish */
 router.get("/count", async (req, res) => {
   try {
-    const { tgId } = req.query; // 🔹 oldingi 'telegramId' o‘rniga 'tgId' ishlatyapmiz
-    if (!tgId)
-      return res.status(400).json({ success: false, message: "tgId majburiy" });
+    const { tgId } = req.query;
+    if (!tgId) {
+      return res.status(400).json({
+        success: false,
+        message: "tgId majburiy parametr hisoblanadi",
+      });
+    }
 
-    const user = await User.findOne({ tgId });
+    const user = await User.findOne({ tgId: Number(tgId) }) || await User.findOne({ tgId: String(tgId) });
     if (!user)
-      return res.status(404).json({ success: false, message: "Foydalanuvchi topilmadi" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Foydalanuvchi topilmadi" });
 
     const count = await Referral.countDocuments({ referrerId: user._id });
-    res.status(200).json({ success: true, count });
+
+    return res.status(200).json({ success: true, count });
   } catch (error) {
     console.error("❌ Referral count xatosi:", error);
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server xatosi yuz berdi" });
   }
 });
 
-/* ✅ 2. Eng ko‘p taklif qilganlar ro‘yxati */
+/* ✅ 2. Eng ko‘p taklif qilgan foydalanuvchilar ro‘yxati */
 router.get("/leaderboard", async (req, res) => {
   try {
     const leaderboard = await Referral.aggregate([
@@ -41,52 +50,81 @@ router.get("/leaderboard", async (req, res) => {
       { $unwind: "$user" },
       {
         $project: {
+          _id: 0,
           username: "$user.username",
+          first_name: "$user.first_name",
           tgId: "$user.tgId",
           count: 1,
         },
       },
     ]);
-    res.json({ success: true, leaderboard });
+
+    return res.status(200).json({ success: true, leaderboard });
   } catch (error) {
     console.error("❌ Leaderboard xatosi:", error);
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server xatosi yuz berdi" });
   }
 });
 
 /* ✅ 3. Referral yozish (taklif orqali kirganda) */
 router.post("/register", async (req, res) => {
   try {
-    const { refCode, tgId } = req.body; // 🔹 newUserId o‘rniga 'tgId'
-    if (!refCode || !tgId)
-      return res.status(400).json({ success: false, message: "Ma'lumot yetarli emas" });
+    const { refCode, tgId } = req.body;
+    if (!refCode || !tgId) {
+      return res.status(400).json({
+        success: false,
+        message: "refCode va tgId majburiy maydonlar",
+      });
+    }
 
     const referrer = await User.findOne({ referralCode: refCode });
-    const referred = await User.findOne({ tgId });
+    const referred = await User.findOne({ tgId: Number(tgId) }) || await User.findOne({ tgId: String(tgId) });
 
-    if (!referrer || !referred)
-      return res.status(404).json({ success: false, message: "Foydalanuvchi topilmadi" });
+    if (!referrer || !referred) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Foydalanuvchi topilmadi" });
+    }
 
-    if (referrer._id.equals(referred._id))
-      return res.status(400).json({ success: false, message: "O‘zingizni taklif qila olmaysiz" });
+    if (referrer._id.equals(referred._id)) {
+      return res.status(400).json({
+        success: false,
+        message: "O‘zingizni taklif qila olmaysiz 😅",
+      });
+    }
 
-    const exists = await Referral.findOne({
+    const existingReferral = await Referral.findOne({
       referrerId: referrer._id,
       referredId: referred._id,
     });
 
-    if (exists)
-      return res.status(200).json({ success: true, message: "Allaqachon mavjud" });
+    if (existingReferral) {
+      return res.status(200).json({
+        success: true,
+        message: "Bu foydalanuvchi allaqachon taklif qilingan",
+      });
+    }
 
     await Referral.create({
       referrerId: referrer._id,
       referredId: referred._id,
     });
 
-    res.json({ success: true, message: "Referral muvaffaqiyatli yozildi" });
+    // (ixtiyoriy) referrer uchun bonus
+    // referrer.balance = (referrer.balance || 0) + 10000;
+    // await referrer.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Referral muvaffaqiyatli yozildi 🎉",
+    });
   } catch (error) {
     console.error("❌ Referral register xatosi:", error);
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server xatosi yuz berdi" });
   }
 });
 
