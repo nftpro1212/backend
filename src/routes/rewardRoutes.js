@@ -1,68 +1,55 @@
 import express from "express";
 import Reward from "../models/Reward.js";
-import User from "../models/User.js"; // foydalanuvchini tekshirish uchun (agar kerak bo‘lsa)
+import User from "../models/User.js";
 
 const router = express.Router();
 
-/**
- * @route   POST /api/rewards/save
- * @desc    Foydalanuvchiga mukofot yozish
- */
+// 🎯 Sovgani saqlash (kunlik cheklov bilan)
 router.post("/save", async (req, res) => {
   try {
     const { telegramId, prize } = req.body;
-
     if (!telegramId || !prize) {
-      return res.status(400).json({
-        success: false,
-        message: "telegramId va prize kiritilishi shart!",
+      return res.status(400).json({ error: "Malumot to‘liq emas" });
+    }
+
+    const user = await User.findOne({ telegramId });
+    if (!user) return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const spinsToday = await Reward.countDocuments({
+      telegramId,
+      createdAt: { $gte: today, $lt: tomorrow },
+    });
+
+    const maxSpins = user.premium?.isActive ? 3 : 1;
+    if (spinsToday >= maxSpins) {
+      return res.status(403).json({
+        error: `Cheklov: siz bugun ${maxSpins} marta aylantira olasiz.`,
       });
     }
 
-    // Foydalanuvchi bazada bormi (ixtiyoriy)
-    const user = await User.findOne({ telegramId });
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Foydalanuvchi topilmadi" });
-    }
-
-    // Yangi mukofot saqlash
-    const reward = new Reward({ telegramId, prize });
-    await reward.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Mukofot muvaffaqiyatli saqlandi",
-      reward,
-    });
+    const reward = await Reward.create({ telegramId, prize });
+    res.json({ success: true, reward });
   } catch (error) {
-    console.error("❌ Reward saqlashda xato:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Save reward error:", error);
+    res.status(500).json({ error: "Server xatosi" });
   }
 });
 
-/**
- * @route   GET /api/rewards/history/:telegramId
- * @desc    Foydalanuvchining barcha mukofotlari tarixini olish
- */
+// 📜 Tarixni olish
 router.get("/history/:telegramId", async (req, res) => {
   try {
-    const { telegramId } = req.params;
-
-    const rewards = await Reward.find({ telegramId }).sort({ createdAt: -1 });
-
-    if (!rewards.length) {
-      return res.status(404).json({
-        success: false,
-        message: "Bu foydalanuvchida hali mukofotlar yo‘q",
-      });
-    }
-
-    res.status(200).json({ success: true, rewards });
+    const rewards = await Reward.find({ telegramId: req.params.telegramId }).sort({
+      createdAt: -1,
+    });
+    res.json({ rewards });
   } catch (error) {
-    console.error("❌ Tarix olishda xato:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Get history error:", error);
+    res.status(500).json({ error: "Server xatosi" });
   }
 });
 
