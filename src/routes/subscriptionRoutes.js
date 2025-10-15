@@ -4,14 +4,14 @@ import User from "../models/User.js";
 
 const router = express.Router();
 
-// 🔹 1. Foydalanuvchini to‘lov sahifasiga yo‘naltirish
+// 🔹 1. Foydalanuvchini adminga yo‘naltirish
 router.post("/", async (req, res) => {
   try {
     const { tgId } = req.body;
     if (!tgId) return res.status(400).json({ success: false, message: "tgId majburiy" });
 
-    // 🔹 Sotuvchi URL, telegramId bilan
-    const paymentUrl = `https://t.me/Ramzjan/pay?telegramId=${tgId}&amount=2`;
+    // 🔹 Admin to'lov URL'i (Telegram orqali)
+    const paymentUrl = `https://t.me/Ramzjan?start=pay_${tgId}`;
 
     return res.status(200).json({ success: true, paymentUrl });
   } catch (error) {
@@ -20,23 +20,30 @@ router.post("/", async (req, res) => {
   }
 });
 
-// 🔹 2. To‘lov tasdiqlanganda webhook yoki admin tomonidan chaqiriladi
+// 🔹 2. To‘lov tasdiqlanganda admin tomonidan qo‘lda chaqiriladi
 router.post("/confirm", async (req, res) => {
   try {
-    const { tgId, expiresAt } = req.body;
+    const { tgId } = req.body;
     if (!tgId) return res.status(400).json({ success: false, message: "tgId majburiy" });
 
     const user = await User.findOne({ telegramId: tgId });
     if (!user) return res.status(404).json({ success: false, message: "Foydalanuvchi topilmadi" });
 
+    // 🔹 Bugungi sanani olish
+    const today = new Date();
+
+    // 🔹 Oyni oxirgi kunini hisoblash
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    lastDayOfMonth.setHours(23, 59, 59, 999); // kun oxirigacha
+
     user.premium = {
       isActive: true,
-      expiresAt: expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // default 30 kun
+      expiresAt: lastDayOfMonth,
     };
 
     await user.save();
 
-    res.status(200).json({ success: true, message: "Premium aktivlandi", user });
+    res.status(200).json({ success: true, message: "Premium aktivlandi oy oxirigacha", user });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server xatosi" });
