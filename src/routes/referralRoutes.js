@@ -53,4 +53,31 @@ router.get("/leaderboard", async (req, res) => {
   }
 });
 
+// 🔹 3. Foydalanuvchining kimlarni chaqirganini ko‘rsatish
+router.get("/invited/:tgId", async (req, res) => {
+  try {
+    const { tgId } = req.params;
+
+    const referrer = await User.findOne({ telegramId: tgId });
+    if (!referrer)
+      return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
+
+    const referrals = await Referral.find({ referrerId: referrer._id }).populate("referredId");
+
+    if (!referrals.length)
+      return res.json({ invited: [], message: "Hech kimni chaqirmagan" });
+
+    const invited = referrals.map((r) => ({
+      username: r.referredId?.username || "",
+      first_name: r.referredId?.first_name || "Noma'lum foydalanuvchi",
+      joinedAt: r.createdAt,
+    }));
+
+    res.json({ invited });
+  } catch (err) {
+    console.error("Referral ro‘yxati xatosi:", err);
+    res.status(500).json({ message: "Server xatosi", error: err.message });
+  }
+});
+
 export default router;
