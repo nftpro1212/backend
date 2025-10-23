@@ -1,16 +1,13 @@
-// models/Referral.js
 import mongoose from "mongoose";
 
 const referralSchema = new mongoose.Schema(
   {
-    referrerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+    referrerTgId: {
+      type: String,
       required: true,
     },
-    referredId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+    referredTgId: {
+      type: String,
       required: true,
     },
   },
