@@ -1,3 +1,4 @@
+// 📁 src/controllers/authController.js
 import User from "../models/User.js";
 import Referral from "../models/Referral.js";
 
@@ -25,7 +26,6 @@ export const handleTelegramLogin = async (req, res) => {
     let user = await User.findOne({ telegramId: finalTelegramId });
 
     if (!user) {
-      // 🆕 Yangi foydalanuvchi
       user = await User.create({
         telegramId: finalTelegramId,
         username: username || "no_username",
@@ -37,7 +37,6 @@ export const handleTelegramLogin = async (req, res) => {
 
       console.log(`🟢 Yangi foydalanuvchi yaratildi: ${user.username} (${finalTelegramId})`);
     } else {
-      // 🔄 Ma’lumotlar yangilanishi kerak bo‘lsa
       let updated = false;
 
       if (username && user.username !== username) {
