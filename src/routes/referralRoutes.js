@@ -13,10 +13,8 @@ router.get("/count", async (req, res) => {
     const { tgId } = req.query;
     if (!tgId) return res.status(400).json({ message: "tgId kiritilmagan" });
 
-    const user = await User.findOne({ telegramId: tgId });
-    if (!user) return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
-
-    const count = await Referral.countDocuments({ referrerId: user._id });
+    // Endi biz referrerId o‘rniga referrerTgId dan foydalanamiz
+    const count = await Referral.countDocuments({ referrerTgId: tgId });
     res.json({ count });
   } catch (err) {
     console.error("Referral count xatosi:", err);
@@ -30,31 +28,26 @@ router.get("/count", async (req, res) => {
 router.get("/leaderboard", async (req, res) => {
   try {
     const leaderboard = await Referral.aggregate([
-      { $group: { _id: "$referrerId", totalRefs: { $sum: 1 } } },
+      { $group: { _id: "$referrerTgId", totalRefs: { $sum: 1 } } },
       { $sort: { totalRefs: -1 } },
       { $limit: 10 },
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "userInfo",
-        },
-      },
-      { $unwind: "$userInfo" },
-      {
-        $project: {
-          _id: 0,
-          referrerId: "$userInfo.telegramId",
-          username: "$userInfo.username",
-          first_name: "$userInfo.first_name",
-          avatar: "$userInfo.photo_url",
-          totalRefs: 1,
-        },
-      },
     ]);
 
-    res.json({ leaderboard });
+    // foydalanuvchilar ma’lumotlarini olish
+    const detailed = await Promise.all(
+      leaderboard.map(async (item) => {
+        const user = await User.findOne({ telegramId: item._id });
+        return {
+          telegramId: item._id,
+          username: user?.username || "no_username",
+          first_name: user?.first_name || "Noma’lum",
+          avatar: user?.avatar || "",
+          totalRefs: item.totalRefs,
+        };
+      })
+    );
+
+    res.json({ leaderboard: detailed });
   } catch (err) {
     console.error("Leaderboard xatosi:", err);
     res.status(500).json({ message: "Server xatosi", error: err.message });
@@ -68,28 +61,51 @@ router.get("/invited/:tgId", async (req, res) => {
   try {
     const { tgId } = req.params;
 
-    // 1️⃣ Chaqiruvchi foydalanuvchini topamiz
+    // referrer mavjudligini tekshiramiz
     const referrer = await User.findOne({ telegramId: tgId });
-    if (!referrer) return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
+    if (!referrer)
+      return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
 
-    // 2️⃣ Kimlarni chaqirganini olish
-    const referrals = await Referral.find({ referrerId: referrer._id }).populate("referredId");
+    // referral tarixini olamiz
+    const referrals = await Referral.find({ referrerTgId: tgId });
 
-    // 3️⃣ Bo‘sh bo‘lsa
     if (!referrals.length)
       return res.json({ invited: [], message: "Hech kimni chaqirmagan" });
 
-    // 4️⃣ Ma’lumotni tayyorlab yuboramiz
-    const invited = referrals.map((r) => ({
-      username: r.referredId?.username || "",
-      first_name: r.referredId?.first_name || "Noma'lum foydalanuvchi",
-      avatar: r.referredId?.photo_url || "",
-      joinedAt: r.createdAt,
-    }));
+    // har bir referred foydalanuvchini topamiz
+    const invited = await Promise.all(
+      referrals.map(async (r) => {
+        const u = await User.findOne({ telegramId: r.referredTgId });
+        return {
+          username: u?.username || "",
+          first_name: u?.first_name || "Noma'lum foydalanuvchi",
+          avatar: u?.avatar || "",
+          joinedAt: r.createdAt,
+        };
+      })
+    );
 
     res.json({ invited });
   } catch (err) {
     console.error("Referral ro‘yxati xatosi:", err);
+    res.status(500).json({ message: "Server xatosi", error: err.message });
+  }
+});
+
+/* ============================================================
+   🔹 4. Referral tarixi (debug yoki admin uchun)
+============================================================ */
+router.get("/history/:tgId", async (req, res) => {
+  try {
+    const { tgId } = req.params;
+    const history = await Referral.find({ referrerTgId: tgId });
+
+    if (!history.length)
+      return res.status(404).json({ message: "Hech qanday referral topilmadi" });
+
+    res.json({ count: history.length, data: history });
+  } catch (err) {
+    console.error("Referral history xatosi:", err);
     res.status(500).json({ message: "Server xatosi", error: err.message });
   }
 });
