@@ -80,11 +80,16 @@ export const handleTelegramLogin = async (req, res) => {
           await Referral.create({
             referrerId: referrer._id,
             referredId: user._id,
-            createdAt: new Date(),
+            referrerTgId: referrer.telegramId, // ✅ qo‘shildi
+            referredTgId: user.telegramId,     // ✅ qo‘shildi
           });
 
           console.log(`🎉 Referral qo‘shildi: ${referrer.username} → ${user.username}`);
+        } else {
+          console.log(`⚠️ Referral allaqachon mavjud: ${referrer.username} → ${user.username}`);
         }
+      } else {
+        console.log(`⚠️ O‘zini o‘zi taklif qilgan yoki referrer topilmadi.`);
       }
     }
 
