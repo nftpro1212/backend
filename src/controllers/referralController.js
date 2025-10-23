@@ -1,7 +1,7 @@
 import Referral from "../models/Referral.js";
 import User from "../models/User.js"; // foydalanuvchi ma'lumotini olish uchun
 
-// ✅ Yangi referral saqlash
+// ✅ Referral qo‘shish
 export const addReferral = async (req, res) => {
   try {
     const { referrerTgId, referredTgId } = req.body;
@@ -17,7 +17,9 @@ export const addReferral = async (req, res) => {
     // Takrorlanishni oldini olish
     const existing = await Referral.findOne({ referrerTgId, referredTgId });
     if (existing) {
-      return res.status(400).json({ message: "Bu foydalanuvchi allaqachon chaqirilgan" });
+      return res
+        .status(400)
+        .json({ message: "Bu foydalanuvchi allaqachon chaqirilgan" });
     }
 
     const referral = await Referral.create({ referrerTgId, referredTgId });
@@ -28,7 +30,7 @@ export const addReferral = async (req, res) => {
   }
 };
 
-// ✅ Referral sonini olish (har bir foydalanuvchi uchun)
+// ✅ Referral sonini olish (profil uchun)
 export const getReferralCount = async (req, res) => {
   try {
     const { tgId } = req.query;
@@ -55,10 +57,13 @@ export const getLeaderboard = async (req, res) => {
     const results = await Promise.all(
       leaderboard.map(async (entry) => {
         const user = await User.findOne({ telegramId: entry._id });
+
         return {
           telegramId: entry._id,
-          name: user?.name || "Noma'lum foydalanuvchi",
+          first_name: user?.first_name || "Noma'lum",
+          last_name: user?.last_name || "",
           username: user?.username || "",
+          avatar: user?.avatar || "",
           totalReferrals: entry.totalReferrals,
         };
       })
@@ -79,20 +84,34 @@ export const getUserReferrals = async (req, res) => {
 
     const referrals = await Referral.find({ referrerTgId: tgId });
 
+    if (!referrals.length) {
+      return res.status(200).json({
+        success: true,
+        message: "Hozircha hech kimni chaqirmagan 😕",
+        referredUsers: [],
+      });
+    }
+
     // Har bir referred foydalanuvchi haqida ma'lumot olish
     const referredUsers = await Promise.all(
       referrals.map(async (ref) => {
         const user = await User.findOne({ telegramId: ref.referredTgId });
         return {
           telegramId: ref.referredTgId,
-          name: user?.name || "Noma'lum foydalanuvchi",
+          first_name: user?.first_name || "Noma'lum",
+          last_name: user?.last_name || "",
           username: user?.username || "",
-          date: ref.createdAt,
+          avatar: user?.avatar || "",
+          joinedAt: ref.createdAt,
         };
       })
     );
 
-    res.json(referredUsers);
+    res.json({
+      success: true,
+      total: referredUsers.length,
+      referredUsers,
+    });
   } catch (error) {
     console.error("Foydalanuvchi referral tarixini olishda xato:", error);
     res.status(500).json({ message: "Server xatosi" });
