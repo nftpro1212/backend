@@ -57,7 +57,7 @@ router.get("/leaderboard", async (req, res) => {
 /* ============================================================
    🔹 3. Foydalanuvchining kimlarni chaqirganini ko‘rsatish
 ============================================================ */
-router.get("/invited/:tgId", async (req, res) => {
+router.get("/invited/:telegramId", async (req, res) => {
   try {
     const { tgId } = req.params;
 
@@ -95,7 +95,7 @@ router.get("/invited/:tgId", async (req, res) => {
 /* ============================================================
    🔹 4. Referral tarixi (debug yoki admin uchun)
 ============================================================ */
-router.get("/history/:tgId", async (req, res) => {
+router.get("/history/:telegramId", async (req, res) => {
   try {
     const { tgId } = req.params;
     const history = await Referral.find({ referrerTgId: tgId });
