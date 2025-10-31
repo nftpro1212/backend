@@ -13,7 +13,7 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ success: false, message: "tgId majburiy" });
 
     // Admin username (to‘lov uchun)
-    const adminUsername = "Ramzjan";
+    const adminUsername = "I00Kclub_admin";
     const paymentUrl = `https://t.me/${adminUsername}`;
 
     return res.status(200).json({ success: true, paymentUrl });
