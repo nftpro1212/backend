@@ -9,12 +9,12 @@ const router = express.Router();
 const BOT_TOKEN = process.env.BOT_TOKEN; // Bot token (.env faylda)
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID; // Masalan: "-1001234567890"
 
-// 🎯 Sovgani saqlash (24 soatlik cheklov bilan) + Guruhga yuborish
+
 router.post("/save", async (req, res) => {
   try {
     const { telegramId, prize } = req.body;
     if (!telegramId || !prize)
-      return res.status(400).json({ error: "Maʼlumot to‘liq emas" });
+      return res.status(400).json({ error: "Maʼlumot to‘liq ema" });
 
     const user = await User.findOne({ telegramId });
     if (!user) return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
