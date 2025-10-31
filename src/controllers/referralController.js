@@ -13,20 +13,29 @@ export const addReferral = async (req, res) => {
     if (referrerTgId === referredTgId)
       return res.status(400).json({ message: "O'zingizni chaqira olmaysiz" });
 
-    const referral = await Referral.findOneAndUpdate(
-      { referrerTgId, referredTgId },
-      { referrerTgId, referredTgId },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    // ✅ Agar referred foydalanuvchi allaqachon mavjud bo‘lsa, referral qo‘shilmasin
+    const existingUser = await User.findOne({ telegramId: referredTgId });
+    if (existingUser)
+      return res.status(400).json({
+        success: false,
+        message: "Referral faqat yangi foydalanuvchilar uchun ishlaydi",
+      });
+
+    // Referrer mavjudligini tekshirish
+    const referrer = await User.findOne({ telegramId: referrerTgId });
+    if (!referrer)
+      return res.status(404).json({ success: false, message: "Referrer topilmadi" });
+
+    // Referral yaratish
+    const referral = await Referral.create({
+      referrerId: referrer._id,
+      referredTgId,
+      referrerTgId,
+    });
 
     res.status(201).json({ success: true, referral });
   } catch (error) {
-    if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({ message: "Bu foydalanuvchi allaqachon chaqirilgan" });
-    }
-    console.error("Referral qo'shishda xato:", error);
+    console.error("Referral qo‘shishda xato:", error);
     res.status(500).json({ message: "Server xatosi" });
   }
 };
