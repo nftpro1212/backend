@@ -1,28 +1,33 @@
 import express from "express";
-import axios from "axios";
 import Reward from "../models/Reward.js";
 import User from "../models/User.js";
+import axios from "axios";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const router = express.Router();
 
 // 🔹 Telegram sozlamalari
-const BOT_TOKEN = process.env.BOT_TOKEN; // Bot token (.env faylda)
-const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID; // Masalan: "-1001234567890"
+const BOT_TOKEN = process.env.BOT_TOKEN; // .env faylda saqlanadi
+const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID; // Telegram guruh ID-si
+const BOT_API_URL = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
 
-
+// 🎯 Sovgani saqlash (24 soatlik cheklov bilan)
 router.post("/save", async (req, res) => {
   try {
     const { telegramId, prize } = req.body;
     if (!telegramId || !prize)
-      return res.status(400).json({ error: "Maʼlumot to‘liq ema" });
+      return res.status(400).json({ error: "Maʼlumot to‘liq emas" });
 
     const user = await User.findOne({ telegramId });
-    if (!user) return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
+    if (!user)
+      return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
 
     const isPremium = user.premium?.isActive || false;
     const maxSpins = isPremium ? 3 : 1;
 
-    // 🔹 Oxirgi 24 soatdagi spinlarni hisoblash
+    // 🔹 Oxirgi 24 soatdagi spinlarni topamiz
     const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const spinsInLast24h = await Reward.countDocuments({
       telegramId,
@@ -33,32 +38,28 @@ router.post("/save", async (req, res) => {
       const lastReward = await Reward.findOne({ telegramId })
         .sort({ createdAt: -1 })
         .limit(1);
-      const nextSpin = new Date(lastReward.createdAt.getTime() + 24 * 60 * 60 * 1000);
+      const nextSpin = new Date(
+        lastReward.createdAt.getTime() + 24 * 60 * 60 * 1000
+      );
       return res.status(403).json({
         error: `Siz so‘nggi 24 soat ichida ${maxSpins} marta aylantirdingiz.`,
         nextSpin,
       });
     }
 
-    // 🔹 Yangi sovg‘ani saqlash
+    // 🔹 Sovg‘ani saqlaymiz
     const reward = await Reward.create({ telegramId, prize });
 
-    // 🔹 Guruhga yuborish (agar sozlangan bo‘lsa)
-    if (BOT_TOKEN && GROUP_CHAT_ID) {
-      const nickname = user.username
-        ? `@${user.username}`
-        : `${user.first_name || "Ismi"} ${user.last_name || ""}`;
-      const message = `🎉 *${nickname}* spin o‘ynab *${prize}* yutdi!`;
-
-      try {
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          chat_id: GROUP_CHAT_ID,
-          text: message,
-          parse_mode: "Markdown",
-        });
-      } catch (err) {
-        console.error("❌ Guruhga yuborishda xato:", err.response?.data || err.message);
-      }
+    // 🔹 Guruhga xabar yuborish
+    const message = `🎉 <b>${user.name || "Foydalanuvchi"}</b> spin aylantirib <b>${prize}</b> yutdi! 🏆`;
+    try {
+      await axios.post(BOT_API_URL, {
+        chat_id: GROUP_CHAT_ID,
+        text: message,
+        parse_mode: "HTML",
+      });
+    } catch (botError) {
+      console.error("Botga xabar yuborishda xatolik:", botError.message);
     }
 
     res.json({ success: true, reward });
@@ -73,7 +74,8 @@ router.get("/history/:telegramId", async (req, res) => {
   try {
     const telegramId = req.params.telegramId;
     const user = await User.findOne({ telegramId });
-    if (!user) return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
+    if (!user)
+      return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
 
     const isPremium = user.premium?.isActive || false;
     const maxSpins = isPremium ? 3 : 1;
