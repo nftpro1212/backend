@@ -17,13 +17,15 @@ export const handleTelegramLogin = async (req, res) => {
     const finalTelegramId = tgId || telegramId;
 
     if (!finalTelegramId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "telegramId (tgId) majburiy" });
+      return res.status(400).json({
+        success: false,
+        message: "telegramId (tgId) majburiy",
+      });
     }
 
     // 🔹 1. Foydalanuvchini topamiz yoki yaratamiz
     let user = await User.findOne({ telegramId: finalTelegramId });
+    let isNewUser = false; // yangi foydalanuvchi flag
 
     if (!user) {
       user = await User.create({
@@ -34,7 +36,7 @@ export const handleTelegramLogin = async (req, res) => {
         avatar,
         referralCode: `ref_${Math.floor(100000 + Math.random() * 900000)}`,
       });
-
+      isNewUser = true;
       console.log(`🟢 Yangi foydalanuvchi yaratildi: ${user.username} (${finalTelegramId})`);
     } else {
       let updated = false;
@@ -64,8 +66,8 @@ export const handleTelegramLogin = async (req, res) => {
       }
     }
 
-    // 🔹 2. Referral tizimi ishlashi
-    if (referralCode && referralCode.startsWith("ref_")) {
+    // 🔹 2. Referral tizimi faqat yangi foydalanuvchi uchun ishlaydi
+    if (isNewUser && referralCode && referralCode.startsWith("ref_")) {
       const referrer = await User.findOne({ referralCode });
 
       // O‘zini o‘zi taklif qilmasligi kerak
@@ -79,8 +81,8 @@ export const handleTelegramLogin = async (req, res) => {
           await Referral.create({
             referrerId: referrer._id,
             referredId: user._id,
-            referrerTgId: referrer.telegramId, // ✅ qo‘shildi
-            referredTgId: user.telegramId,     // ✅ qo‘shildi
+            referrerTgId: referrer.telegramId,
+            referredTgId: user.telegramId,
           });
 
           console.log(`🎉 Referral qo‘shildi: ${referrer.username} → ${user.username}`);
