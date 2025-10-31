@@ -8,9 +8,9 @@ dotenv.config();
 
 const router = express.Router();
 
-// 🔹 Telegram sozlamalari
-const BOT_TOKEN = process.env.BOT_TOKEN; // .env faylda saqlanadi
-const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID; // Telegram guruh ID-si
+// 🔹 Telegram sozlamalari (.env orqali)
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID;
 const BOT_API_URL = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
 
 // 🎯 Sovgani saqlash (24 soatlik cheklov bilan)
@@ -22,7 +22,7 @@ router.post("/save", async (req, res) => {
 
     const user = await User.findOne({ telegramId });
     if (!user)
-      return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
+      return res.status(404).json({ error: "Foydalanuvchi topilmadi bazadan" });
 
     const isPremium = user.premium?.isActive || false;
     const maxSpins = isPremium ? 3 : 1;
@@ -50,8 +50,15 @@ router.post("/save", async (req, res) => {
     // 🔹 Sovg‘ani saqlaymiz
     const reward = await Reward.create({ telegramId, prize });
 
+    // 🔹 Foydalanuvchi nomini to‘g‘ri shakllantiramiz
+    const displayName =
+      user.first_name && user.last_name
+        ? `${user.first_name} ${user.last_name}`
+        : user.first_name || user.username || "Foydalanuvchi";
+
     // 🔹 Guruhga xabar yuborish
-    const message = `🎉 <b>${user.name || "Foydalanuvchi"}</b> spin aylantirib <b>${prize}</b> yutdi! 🏆`;
+    const message = `🎉 <b>${displayName}</b> spin aylantirib <b>${prize}</b> yutdi! 🏆`;
+
     try {
       await axios.post(BOT_API_URL, {
         chat_id: GROUP_CHAT_ID,
@@ -59,7 +66,10 @@ router.post("/save", async (req, res) => {
         parse_mode: "HTML",
       });
     } catch (botError) {
-      console.error("Botga xabar yuborishda xatolik:", botError.message);
+      console.error(
+        "Botga xabar yuborishda xatolik:",
+        botError.response?.data || botError.message
+      );
     }
 
     res.json({ success: true, reward });
@@ -75,7 +85,7 @@ router.get("/history/:telegramId", async (req, res) => {
     const telegramId = req.params.telegramId;
     const user = await User.findOne({ telegramId });
     if (!user)
-      return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
+      return res.status(404).json({ error: "Foydalanuvchi topilmadi bazadan" });
 
     const isPremium = user.premium?.isActive || false;
     const maxSpins = isPremium ? 3 : 1;
