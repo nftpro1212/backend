@@ -61,10 +61,7 @@ router.get("/leaderboard", async (req, res) => {
 ============================================================ */
 router.get("/history/:tgId", async (req, res) => {
   try {
-    const { tgId } = req.params;
-    if (!tgId) {
-      return res.status(400).json({ success: false, message: "tgId kiritilmagan" });
-    }
+    const tgId = String(req.params.tgId); // ✅ Majburan stringga o‘tkazamiz
 
     const referrer = await User.findOne({ telegramId: tgId });
     if (!referrer) {
@@ -72,7 +69,6 @@ router.get("/history/:tgId", async (req, res) => {
     }
 
     const referrals = await Referral.find({ referrerTgId: tgId });
-
     if (!referrals.length) {
       return res.json({ success: true, invited: [], message: "Hech kimni chaqirmagan" });
     }
@@ -91,8 +87,8 @@ router.get("/history/:tgId", async (req, res) => {
 
     res.json({ success: true, invited });
   } catch (err) {
-    console.error("Referral ro‘yxati xatosi:", err);
-    res.status(500).json({ success: false, message: "Server xatosi", error: err.message });
+    console.error("❌ History xatosi:", err);
+    res.status(500).json({ success: false, message: "Server xatosi" });
   }
 });
  
