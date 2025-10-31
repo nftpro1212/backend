@@ -4,38 +4,53 @@ import User from "../models/User.js";
 
 const router = express.Router();
 
-// 🔹 1. Foydalanuvchini adminga yo‘naltirish
+/**
+ * 🔹 1. Foydalanuvchini admin bilan to‘lov uchun bog‘lash
+ * POST /api/subscribe
+ */
 router.post("/", async (req, res) => {
   try {
     const { tgId } = req.body;
-    if (!tgId) return res.status(400).json({ success: false, message: "tgId majburiy" });
+    if (!tgId)
+      return res.status(400).json({ success: false, message: "tgId majburiy" });
 
-    // 🔹 Admin to'lov URL'i (Telegram orqali)
+    // 🔸 Admin Telegram username (to‘lov uchun)
     const adminUsername = "Ramzjan";
     const paymentUrl = `https://t.me/${adminUsername}`;
 
-    return res.status(200).json({ success: true, paymentUrl });
+    return res.status(200).json({
+      success: true,
+      message: "To‘lov uchun admin bilan bog‘laning",
+      paymentUrl,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Subscribe error:", error);
     res.status(500).json({ success: false, message: "Server xatosi" });
   }
 });
 
-// 🔹 2. To‘lov tasdiqlanganda admin tomonidan qo‘lda chaqiriladi
+/**
+ * 🔹 2. Admin tomonidan to‘lov tasdiqlanganda foydalanuvchiga premium berish
+ * POST /api/subscribe/confirm
+ */
 router.post("/confirm", async (req, res) => {
   try {
     const { tgId } = req.body;
-    if (!tgId) return res.status(400).json({ success: false, message: "tgId majburiy" });
+    if (!tgId)
+      return res.status(400).json({ success: false, message: "tgId majburiy" });
 
     const user = await User.findOne({ telegramId: tgId });
-    if (!user) return res.status(404).json({ success: false, message: "Foydalanuvchi topilmadi" });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "Foydalanuvchi topilmadi" });
 
-    // 🔹 Bugungi sanani olish
+    // 🔹 Bugungi sana
     const today = new Date();
 
-    // 🔹 Oyni oxirgi kunini hisoblash
+    // 🔹 Oyning oxirgi kuni
     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    lastDayOfMonth.setHours(23, 59, 59, 999); // kun oxirigacha
+    lastDayOfMonth.setHours(23, 59, 59, 999);
 
     user.premium = {
       isActive: true,
@@ -44,9 +59,14 @@ router.post("/confirm", async (req, res) => {
 
     await user.save();
 
-    res.status(200).json({ success: true, message: "Premium aktivlandi oy oxirigacha", user });
+    res.status(200).json({
+      success: true,
+      message: `Premium faollashtirildi (${lastDayOfMonth.toLocaleDateString()}) gacha`,
+      premiumUntil: lastDayOfMonth,
+      user,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Confirm subscription error:", error);
     res.status(500).json({ success: false, message: "Server xatosi" });
   }
 });
