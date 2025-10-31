@@ -36,7 +36,7 @@ connectDB(); // config/db.js ichida Mongo ulanishi
 
 // ✅ API Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/subscription", subscriptionRoutes);
+app.use("/api/subscribe", subscriptionRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/prizes", prizeRoutes);
 app.use("/api/users", userRoutes);
