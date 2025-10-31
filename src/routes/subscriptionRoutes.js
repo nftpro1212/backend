@@ -11,7 +11,8 @@ router.post("/", async (req, res) => {
     if (!tgId) return res.status(400).json({ success: false, message: "tgId majburiy" });
 
     // 🔹 Admin to'lov URL'i (Telegram orqali)
-    const paymentUrl = `https://t.me/Ramzjan?start=pay_${tgId}`;
+    const adminUsername = "Ramzjan";
+    const paymentUrl = `https://t.me/${adminUsername}`;
 
     return res.status(200).json({ success: true, paymentUrl });
   } catch (error) {
