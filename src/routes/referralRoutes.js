@@ -62,15 +62,20 @@ router.get("/leaderboard", async (req, res) => {
 router.get("/history/:tgId", async (req, res) => {
   try {
     const { tgId } = req.params;
+    if (!tgId) {
+      return res.status(400).json({ success: false, message: "tgId kiritilmagan" });
+    }
 
     const referrer = await User.findOne({ telegramId: tgId });
-    if (!referrer)
+    if (!referrer) {
       return res.status(404).json({ success: false, message: "Foydalanuvchi topilmadi" });
+    }
 
     const referrals = await Referral.find({ referrerTgId: tgId });
 
-    if (!referrals.length)
+    if (!referrals.length) {
       return res.json({ success: true, invited: [], message: "Hech kimni chaqirmagan" });
+    }
 
     const invited = await Promise.all(
       referrals.map(async (r) => {
@@ -87,7 +92,7 @@ router.get("/history/:tgId", async (req, res) => {
     res.json({ success: true, invited });
   } catch (err) {
     console.error("Referral ro‘yxati xatosi:", err);
-    res.status(500).json({ success: false, message: "Server xatosi" });
+    res.status(500).json({ success: false, message: "Server xatosi", error: err.message });
   }
 });
  
