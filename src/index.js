@@ -42,6 +42,7 @@ app.use("/api/prizes", prizeRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/telegram", telegramRoutes); // 🟢 Telegram WebApp login yo‘li
 app.use("/api/rewards", rewardRoutes);
+app.use("/api/history", referralRoutes);
 // ✅ Default route
 app.get("/", (req, res) => {
   res.status(200).send({
