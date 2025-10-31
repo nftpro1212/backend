@@ -4,27 +4,28 @@ import User from "../models/User.js"; // foydalanuvchi ma'lumotini olish uchun
 // ✅ Referral qo‘shish
 export const addReferral = async (req, res) => {
   try {
-    const { referrerTgId, referredTgId } = req.body;
+    const referrerTgId = String(req.body.referrerTgId);
+    const referredTgId = String(req.body.referredTgId);
 
-    if (!referrerTgId || !referredTgId) {
+    if (!referrerTgId || !referredTgId)
       return res.status(400).json({ message: "Telegram IDlar kerak" });
-    }
 
-    if (referrerTgId === referredTgId) {
+    if (referrerTgId === referredTgId)
       return res.status(400).json({ message: "O'zingizni chaqira olmaysiz" });
-    }
 
-    // Takrorlanishni oldini olish
-    const existing = await Referral.findOne({ referrerTgId, referredTgId });
-    if (existing) {
+    const referral = await Referral.findOneAndUpdate(
+      { referrerTgId, referredTgId },
+      { referrerTgId, referredTgId },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(201).json({ success: true, referral });
+  } catch (error) {
+    if (error.code === 11000) {
       return res
         .status(400)
         .json({ message: "Bu foydalanuvchi allaqachon chaqirilgan" });
     }
-
-    const referral = await Referral.create({ referrerTgId, referredTgId });
-    res.status(201).json(referral);
-  } catch (error) {
     console.error("Referral qo'shishda xato:", error);
     res.status(500).json({ message: "Server xatosi" });
   }
