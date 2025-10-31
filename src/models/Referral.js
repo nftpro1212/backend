@@ -13,7 +13,6 @@ const referralSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    // 🔹 Qo‘shimcha identifikatorlar (Telegram ID lar)
     referrerTgId: {
       type: String,
       required: true,
@@ -25,5 +24,8 @@ const referralSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// 🔹 Takrorlanishni oldini oluvchi unique indeks
+referralSchema.index({ referrerTgId: 1, referredTgId: 1 }, { unique: true });
 
 export default mongoose.model("Referral", referralSchema);
