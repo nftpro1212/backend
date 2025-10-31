@@ -17,23 +17,21 @@ router.post("/add", async (req, res) => {
     if (referrerTgId === referredTgId)
       return res.status(400).json({ success: false, message: "O'zingizni chaqira olmaysiz" });
 
-    // Takrorlanmasin
-    const existing = await Referral.findOne({ referrerTgId, referredTgId });
-    if (existing)
-      return res.status(400).json({ success: false, message: "Bu foydalanuvchi allaqachon chaqirilgan" });
-
-    // Foydalanuvchilarni topamiz
-    const referrer = await User.findOne({ telegramId: referrerTgId });
+    // Yangi foydalanuvchi ekanligini tekshirish
     const referred = await User.findOne({ telegramId: referredTgId });
+    if (referred)
+      return res.status(400).json({ success: false, message: "Foydalanuvchi allaqachon tizimda" });
 
-    if (!referrer || !referred)
-      return res.status(404).json({ success: false, message: "Foydalanuvchi topilmadi" });
+    // Referrer mavjudligini tekshirish
+    const referrer = await User.findOne({ telegramId: referrerTgId });
+    if (!referrer)
+      return res.status(404).json({ success: false, message: "Referrer topilmadi" });
 
+    // Referral yaratish
     const referral = await Referral.create({
       referrerId: referrer._id,
-      referredId: referred._id,
+      referredTgId, // referred foydalanuvchi hali tizimda yo'q, shuning uchun _id yo'q
       referrerTgId,
-      referredTgId,
     });
 
     res.status(201).json({ success: true, referral });
