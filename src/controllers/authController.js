@@ -25,38 +25,27 @@ export const handleTelegramLogin = async (req, res) => {
 
     // 🔹 1. Foydalanuvchini topamiz yoki yaratamiz
     let user = await User.findOne({ telegramId: finalTelegramId });
-    let isNewUser = false; // yangi foydalanuvchi flag
+    let isNewUser = false;
 
     if (!user) {
+      const safeAvatar = avatar || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
       user = await User.create({
         telegramId: finalTelegramId,
         username: username || "no_username",
         first_name,
         last_name,
-        avatar,
-        referralCode: `ref_${Math.floor(100000 + Math.random() * 900000)}`,
+        avatar: safeAvatar,
+        referralCode: String(finalTelegramId), // 🔹 Referral kod Telegram ID bilan bir xil
       });
       isNewUser = true;
       console.log(`🟢 Yangi foydalanuvchi yaratildi: ${user.username} (${finalTelegramId})`);
     } else {
       let updated = false;
-
-      if (username && user.username !== username) {
-        user.username = username;
-        updated = true;
-      }
-      if (first_name && user.first_name !== first_name) {
-        user.first_name = first_name;
-        updated = true;
-      }
-      if (last_name && user.last_name !== last_name) {
-        user.last_name = last_name;
-        updated = true;
-      }
-      if (avatar && user.avatar !== avatar) {
-        user.avatar = avatar;
-        updated = true;
-      }
+      if (username && user.username !== username) { user.username = username; updated = true; }
+      if (first_name && user.first_name !== first_name) { user.first_name = first_name; updated = true; }
+      if (last_name && user.last_name !== last_name) { user.last_name = last_name; updated = true; }
+      if (avatar && user.avatar !== avatar) { user.avatar = avatar; updated = true; }
 
       if (updated) {
         await user.save();
@@ -66,11 +55,10 @@ export const handleTelegramLogin = async (req, res) => {
       }
     }
 
-    // 🔹 2. Referral tizimi faqat yangi foydalanuvchi uchun ishlaydi
-    if (isNewUser && referralCode && referralCode.startsWith("ref_")) {
+    // 🔹 2. Referral tizimi (faqat yangi foydalanuvchi uchun)
+    if (isNewUser && referralCode && referralCode !== String(finalTelegramId)) {
       const referrer = await User.findOne({ referralCode });
 
-      // O‘zini o‘zi taklif qilmasligi kerak
       if (referrer && referrer._id.toString() !== user._id.toString()) {
         const existingReferral = await Referral.findOne({
           referrerId: referrer._id,
@@ -84,7 +72,6 @@ export const handleTelegramLogin = async (req, res) => {
             referrerTgId: referrer.telegramId,
             referredTgId: user.telegramId,
           });
-
           console.log(`🎉 Referral qo‘shildi: ${referrer.username} → ${user.username}`);
         } else {
           console.log(`⚠️ Referral allaqachon mavjud: ${referrer.username} → ${user.username}`);
@@ -99,6 +86,7 @@ export const handleTelegramLogin = async (req, res) => {
       success: true,
       user,
     });
+
   } catch (error) {
     console.error("❌ Telegram login xatosi:", error);
     return res.status(500).json({
