@@ -1,7 +1,6 @@
 import Referral from "../models/Referral.js";
-import User from "../models/User.js"; // foydalanuvchi ma'lumotini olish uchun
+import User from "../models/User.js";
 
-// ✅ Referral qo‘shish
 export const addReferral = async (req, res) => {
   try {
     const referrerTgId = String(req.body.referrerTgId);
@@ -13,117 +12,47 @@ export const addReferral = async (req, res) => {
     if (referrerTgId === referredTgId)
       return res.status(400).json({ message: "O'zingizni chaqira olmaysiz" });
 
-    // ✅ Agar referred foydalanuvchi allaqachon mavjud bo‘lsa, referral qo‘shilmasin
+    // Agar referred foydalanuvchi allaqachon mavjud bo‘lsa — referral qo‘shilmasin
     const existingUser = await User.findOne({ telegramId: referredTgId });
-    if (existingUser)
+    if (existingUser) {
       return res.status(400).json({
         success: false,
         message: "Referral faqat yangi foydalanuvchilar uchun ishlaydi",
       });
+    }
 
-    // Referrer mavjudligini tekshirish
+    // Referrer (chaqirgan) foydalanuvchini topish
     const referrer = await User.findOne({ telegramId: referrerTgId });
     if (!referrer)
       return res.status(404).json({ success: false, message: "Referrer topilmadi" });
 
-    // Referral yaratish
-    const referral = await Referral.create({
-      referrerId: referrer._id,
-      referredTgId,
+    // Referral avval qo‘shilmaganligini tekshirish
+    const alreadyReferred = await Referral.findOne({
       referrerTgId,
+      referredTgId,
     });
-
-    res.status(201).json({ success: true, referral });
-  } catch (error) {
-    console.error("Referral qo‘shishda xato:", error);
-    res.status(500).json({ message: "Server xatosi" });
-  }
-};
-
-// ✅ Referral sonini olish (profil uchun)
-export const getReferralCount = async (req, res) => {
-  try {
-    const { tgId } = req.query;
-    if (!tgId) return res.status(400).json({ message: "tgId kerak" });
-
-    const count = await Referral.countDocuments({ referrerTgId: tgId });
-    res.json({ count });
-  } catch (error) {
-    console.error("Referral sanashda xato:", error);
-    res.status(500).json({ message: "Server xatosi" });
-  }
-};
-
-// ✅ Yetakchilar ro‘yxati (leaderboard)
-export const getLeaderboard = async (req, res) => {
-  try {
-    const leaderboard = await Referral.aggregate([
-      { $group: { _id: "$referrerTgId", totalReferrals: { $sum: 1 } } },
-      { $sort: { totalReferrals: -1 } },
-      { $limit: 20 },
-    ]);
-
-    // Har bir foydalanuvchining username va name’sini qo‘shamiz
-    const results = await Promise.all(
-      leaderboard.map(async (entry) => {
-        const user = await User.findOne({ telegramId: entry._id });
-
-        return {
-          telegramId: entry._id,
-          first_name: user?.first_name || "Noma'lum",
-          last_name: user?.last_name || "",
-          username: user?.username || "",
-          avatar: user?.avatar || "",
-          totalReferrals: entry.totalReferrals,
-        };
-      })
-    );
-
-    res.json(results);
-  } catch (error) {
-    console.error("Leaderboard olishda xato:", error);
-    res.status(500).json({ message: "Server xatosi" });
-  }
-};
-
-// ✅ Ma'lum foydalanuvchining chaqirgan odamlarini olish
-export const getUserReferrals = async (req, res) => {
-  try {
-    const { tgId } = req.params;
-    if (!tgId) return res.status(400).json({ message: "tgId kerak" });
-
-    const referrals = await Referral.find({ referrerTgId: tgId });
-
-    if (!referrals.length) {
-      return res.status(200).json({
-        success: true,
-        message: "Hozircha hech kimni chaqirmagan 😕",
-        referredUsers: [],
+    if (alreadyReferred) {
+      return res.status(400).json({
+        success: false,
+        message: "Bu foydalanuvchi allaqachon referral orqali qo‘shilgan",
       });
     }
 
-    // Har bir referred foydalanuvchi haqida ma'lumot olish
-    const referredUsers = await Promise.all(
-      referrals.map(async (ref) => {
-        const user = await User.findOne({ telegramId: ref.referredTgId });
-        return {
-          telegramId: ref.referredTgId,
-          first_name: user?.first_name || "Noma'lum",
-          last_name: user?.last_name || "",
-          username: user?.username || "",
-          avatar: user?.avatar || "",
-          joinedAt: ref.createdAt,
-        };
-      })
-    );
+    // Referral yozuvini yaratish
+    const referral = await Referral.create({
+      referrerId: referrer._id,  // ✅ kerak bo‘lgan field
+      referredId: null,          // ❗ yangi foydalanuvchi hali yaratilmagan
+      referrerTgId,
+      referredTgId,
+    });
 
-    res.json({
+    res.status(201).json({
       success: true,
-      total: referredUsers.length,
-      referredUsers,
+      message: "Referral muvaffaqiyatli qo‘shildi",
+      referral,
     });
   } catch (error) {
-    console.error("Foydalanuvchi referral tarixini olishda xato:", error);
+    console.error("Referral qo‘shishda xato:", error);
     res.status(500).json({ message: "Server xatosi" });
   }
 };
