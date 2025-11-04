@@ -8,62 +8,46 @@ router.post("/login", async (req, res) => {
   try {
     const { telegramId, username, first_name, last_name, avatar, referralCode } = req.body;
 
-    if (!telegramId) {
-      return res.status(400).json({ success: false, message: "Telegram ID kerak" });
-    }
-
     // foydalanuvchi mavjudmi?
     let user = await User.findOne({ telegramId });
 
     if (!user) {
-      // 🔹 referralCode bo‘lsa, referrer’ni topamiz
+      // referer topish (agar start_param keldi)
       let referredByUser = null;
       if (referralCode) {
         referredByUser = await User.findOne({ referralCode });
       }
 
-      // 🔹 yangi foydalanuvchini yaratamiz
+      // yangi foydalanuvchi yaratish
       user = new User({
         telegramId,
         username,
         first_name,
         last_name,
         avatar,
-        referralCode: `ref_${telegramId}`, // har bir foydalanuvchiga unikal referral kodi
+        referralCode: `ref_${telegramId}`,
         referredBy: referredByUser ? referredByUser._id : null,
       });
 
       await user.save();
 
-      // 🔹 agar referralCode to‘g‘ri bo‘lsa va o‘zi bilan teng bo‘lmasa — referral yozuvini yaratamiz
-      if (referredByUser && referredByUser.telegramId !== telegramId) {
-        const existingReferral = await Referral.findOne({
-          referrerId: referredByUser._id,
-          referredId: user._id,
+      // ✅ Referral yozuvini faqat yangi user uchun qo‘shish
+      if (referredByUser) {
+        const referralExists = await Referral.findOne({
+          referredTgId: String(telegramId),
         });
 
-        if (!existingReferral) {
+        if (!referralExists) {
           await Referral.create({
             referrerId: referredByUser._id,
-            referredId: user._id,
+            referrerTgId: String(referredByUser.telegramId),
+            referredTgId: String(telegramId),
           });
         }
       }
-
-      return res.status(201).json({
-        success: true,
-        message: "Yangi foydalanuvchi yaratildi",
-        user,
-      });
     }
 
-    // 🔹 foydalanuvchi avval tizimga kirgan bo‘lsa
-    res.status(200).json({
-      success: true,
-      message: "Foydalanuvchi tizimga kirdi (avval mavjud)",
-      user,
-    });
-
+    res.json({ success: true, user });
   } catch (err) {
     console.error("Login xatosi:", err);
     res.status(500).json({ success: false, message: "Server xatosi", error: err.message });
